@@ -2,8 +2,11 @@ import { DashboardCard, DashboardCardContent } from "@/components/dashboard-card
 import UserDataCard, { UserDataProps } from "@/components/user-data-card";
 import { db } from "@/lib/db";
 import { Calendar, CreditCard, DollarSign, PersonStanding, UserPlus, UserRoundCheck } from "lucide-react";
-import { endOfMonth, formatDistanceToNow, startOfMonth } from "date-fns";
+import { eachMonthOfInterval, endOfMonth, format, formatDistanceToNow, startOfMonth } from "date-fns";
 import UserPurchaseCard, { UserPurchaseProps } from "@/components/user-purchase-card";
+import BarChart from "@/components/barchart";
+import LineGraph from "@/components/line-graph";
+import GoalDataCard from "@/components/goal";
 
 export default async function Dashboard() {
   const currentDate = new Date()
@@ -30,6 +33,10 @@ export default async function Dashboard() {
     }
   })
   const totalAmount = salesTotal._sum.amount || 0 
+
+  // Goal Amounts
+  const goalAmount = 1000;
+  const goalProgress = totalAmount / goalAmount * 100
 
   // Fetch Recent Users
   const recentUsers = await db.user.findMany({
@@ -64,9 +71,45 @@ export default async function Dashboard() {
     saleAmount: `$${(purchase.amount || 0).toFixed(2)}`
   })))
 
+  // Users This Month
+  const usersThisMonth = await db.user.groupBy({
+    by: ['createdAt'],
+    _count: {
+      createdAt: true
+    },
+    orderBy: {
+      createdAt: 'asc'
+    }
+  })
+  const monthlyUsersData = eachMonthOfInterval({
+    start: startOfMonth(new Date(usersThisMonth[0]?.createdAt || new Date())),
+    end: endOfMonth(currentDate)
+  }).map(month => {
+    const monthString = format(month, 'MMM');
+    const userMonthly = usersThisMonth.filter(user => format(new Date(user.createdAt), 'MMM') === monthString).reduce((total, user) => total + user._count.createdAt, 0);
+    return { month: monthString, total: userMonthly}
+    
+  })
 
+  // Sales This Month
+  const salesThisMonth = await db.purchase.groupBy({
+    by: ['createdAt'],
+    _sum: {
+      amount: true
+    },
+    orderBy: {
+      createdAt: 'asc'
+    }
+  })
 
-
+  const monthlySalesData = eachMonthOfInterval({
+    start: startOfMonth(new Date(salesThisMonth[0]?.createdAt || new Date())),
+    end: endOfMonth(currentDate)
+  }).map(month => {
+    const monthString = format(month, 'MMM');
+    const salesInMonth = salesThisMonth.filter(sales => format(new Date(sales.createdAt), 'MMM') === monthString).reduce((total, sale) => total + sale._sum.amount!, 0)
+    return { month: monthString, total: salesInMonth}
+  })
 
   return (
     <div className="flex flex-col gap-5 w-full">
@@ -131,9 +174,14 @@ export default async function Dashboard() {
             ))}
           </DashboardCardContent>
           </section>
+
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 transition-all">
+            <BarChart data={monthlyUsersData}/>
+            <LineGraph data={monthlySalesData}/>
+          </section>
+          <GoalDataCard goal={goalAmount} value={goalProgress}/>
         </div>
       </div>
-      
     </div>
   );
 }
