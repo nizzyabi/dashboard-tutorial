@@ -12,6 +12,7 @@
     "@prisma/client": "^5.15.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
     "lucide": "^0.383.0",
     "lucide-react": "^0.383.0",
     "next": "14.2.3",
