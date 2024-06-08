@@ -46,6 +46,7 @@ export default async function Dashboard() {
     take: 7
   });
 
+  // User Data
   const UserData: UserDataProps[] = recentUsers.map((account) => ({
     name: account.name || 'Unknown',
     email: account.email || 'Unknown',
